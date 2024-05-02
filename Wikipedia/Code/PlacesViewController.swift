@@ -1950,7 +1950,21 @@ class PlacesViewController: ViewController, UISearchBarDelegate, ArticlePopoverV
         let searchResult = MWKSearchResult(articleID: 0, revID: 0, title: title, displayTitle: displayTitle, displayTitleHTML: displayTitleHTML, wikidataDescription: article.wikidataDescription, extract: article.snippet, thumbnailURL: article.thumbnailURL, index: nil, titleNamespace: nil, location: article.location)
         currentSearch = PlaceSearch(filter: .top, type: .location, origin: .user, sortStyle: .links, string: nil, region: region, localizedDescription: title, searchResult: searchResult, siteURL: articleURL.wmf_site)
     }
-    
+
+    // MOTODO: Show location on map
+    @objc public func showLocation(lat: Double, lon: Double, name: String?) {
+        panMapToNextLocationUpdate = false
+        locationManager.stopMonitoringLocation()
+        mapView.showsUserLocation = false
+        let location = CLLocation(latitude: lat, longitude: lon)
+        zoomAndPanMapView(toLocation: location)
+        // if title present add annotation on map
+        guard let title = title, let locationAnnotation = RedirectionPlaceView(coordinate: location.coordinate, title: title) else {
+            return
+        }
+        mapView.addAnnotation(locationAnnotation)
+    }
+
     fileprivate func searchForFirstSearchSuggestion() {
         if !searchSuggestionController.searches[PlaceSearchSuggestionController.completionSection].isEmpty {
             currentSearch = searchSuggestionController.searches[PlaceSearchSuggestionController.completionSection][0]

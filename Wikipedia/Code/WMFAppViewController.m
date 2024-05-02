@@ -1131,6 +1131,7 @@ NSString *const WMFLanguageVariantAlertsLibraryVersion = @"WMFLanguageVariantAle
         case WMFUserActivityTypeAppearanceSettings:
         case WMFUserActivityTypeNotificationSettings:
         case WMFUserActivityTypeContent:
+        case WMFUserActivityTypeLocation:
             return YES;
         case WMFUserActivityTypeSearchResults:
             return [activity wmf_searchTerm] != nil;
@@ -1149,6 +1150,12 @@ NSString *const WMFLanguageVariantAlertsLibraryVersion = @"WMFLanguageVariantAle
                        completion:^{
                        }];
     }
+}
+
+- (void)openPlacesTab:(BOOL)animated {
+    [self dismissPresentedViewControllers];
+    [self setSelectedIndex:WMFAppTabTypePlaces];
+    [self.navigationController popToRootViewControllerAnimated:animated];
 }
 
 - (BOOL)processUserActivity:(NSUserActivity *)activity animated:(BOOL)animated completion:(dispatch_block_t)done {
@@ -1172,15 +1179,23 @@ NSString *const WMFLanguageVariantAlertsLibraryVersion = @"WMFLanguageVariantAle
             [self.navigationController popToRootViewControllerAnimated:animated];
             break;
         case WMFUserActivityTypePlaces: {
-            [self dismissPresentedViewControllers];
-            [self setSelectedIndex:WMFAppTabTypePlaces];
-            [self.navigationController popToRootViewControllerAnimated:animated];
+            [self openPlacesTab:animated];
             NSURL *articleURL = activity.wmf_linkURL;
             if (articleURL) {
                 // For "View on a map" action to succeed, view mode has to be set to map.
                 [[self placesViewController] updateViewModeToMap];
                 [[self placesViewController] showArticleURL:articleURL];
             }
+        } break;
+        case WMFUserActivityTypeLocation: {
+            [self openPlacesTab:animated];
+            NSURL *locationURL = activity.wmf_linkURL;
+            double latitude = ((NSString *) activity.userInfo[@"latitude"]).doubleValue;
+            double longitude = ((NSString *) activity.userInfo[@"longitude"]).doubleValue;
+            NSString* name = activity.userInfo[@"name"];
+            // For "View on a map" action to succeed, view mode has to be set to map.
+            [[self placesViewController] updateViewModeToMap];
+            [[self placesViewController] showLocationWithLat:latitude lon:longitude name:(name != NULL) ? name : @""];
         } break;
         case WMFUserActivityTypeContent: {
             [self dismissPresentedViewControllers];

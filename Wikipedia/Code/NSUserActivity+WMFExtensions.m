@@ -41,16 +41,20 @@ __attribute__((annotate("returns_localized_nsstring"))) static inline NSString *
     return activity;
 }
 
-+ (instancetype)wmf_pageActivityWithName:(NSString *)pageName {
++ (instancetype)wmf_pageActivityWithName:(NSString *)pageName additionalUserInfo:(NSDictionary *)userInfoAddition {
     NSUserActivity *activity = [self wmf_activityWithType:[pageName lowercaseString]];
     activity.title = wmf_localizationNotNeeded(pageName);
-    activity.userInfo = @{@"WMFPage": pageName};
-
+    NSDictionary* userInfo = @{@"WMFPage": pageName};
+    activity.userInfo = [userInfo mtl_dictionaryByAddingEntriesFromDictionary:userInfoAddition];
     NSMutableSet *set = [activity.keywords mutableCopy];
     [set addObjectsFromArray:[pageName componentsSeparatedByString:@" "]];
     activity.keywords = set;
 
     return activity;
+}
+
++ (instancetype)wmf_pageActivityWithName:(NSString *)pageName {
+    return [self wmf_pageActivityWithName:pageName additionalUserInfo:NULL];
 }
 
 + (instancetype)wmf_contentActivityWithURL:(NSURL *)url {
@@ -71,6 +75,38 @@ __attribute__((annotate("returns_localized_nsstring"))) static inline NSString *
     }
     NSUserActivity *activity = [self wmf_pageActivityWithName:@"Places"];
     activity.webpageURL = articleURL;
+    return activity;
+}
+
++ (instancetype)wmf_locationActivityWithURL:(NSURL *)activityURL {
+    NSURLComponents *components = [NSURLComponents componentsWithURL:activityURL resolvingAgainstBaseURL:NO];
+    NSString* latitude;
+    NSString* longitude;
+    NSString* name;
+    for (NSURLQueryItem* query in components.queryItems) {
+        if ([query.name isEqual: @"latitude"]) {
+            latitude = query.value;
+        }
+        if ([query.name isEqual: @"longitude"]) {
+            longitude = query.value;
+        }
+        if ([query.name isEqual: @"name"]) {
+            name = query.value;
+        }
+    }
+    if (latitude == NULL || longitude == NULL) {
+        return nil;
+    }
+    NSMutableDictionary* locationParams = [NSMutableDictionary dictionaryWithDictionary:@{
+        @"latitude": latitude,
+        @"longitude": longitude
+    }];
+    if(name) {
+        locationParams[@"name"] = name;
+    }
+    NSUserActivity *activity = [self wmf_pageActivityWithName:@"Location" additionalUserInfo:locationParams];
+    components.scheme = @"https";
+    activity.webpageURL = components.URL;
     return activity;
 }
 
@@ -125,6 +161,8 @@ __attribute__((annotate("returns_localized_nsstring"))) static inline NSString *
         return [self wmf_exploreViewActivity];
     } else if ([url.host isEqualToString:@"places"]) {
         return [self wmf_placesActivityWithURL:url];
+    }else if ([url.host isEqualToString:@"location"]) {
+        return [self wmf_locationActivityWithURL:url];
     } else if ([url.host isEqualToString:@"saved"]) {
         return [self wmf_savedPagesViewActivity];
     } else if ([url.host isEqualToString:@"history"]) {
@@ -223,6 +261,8 @@ __attribute__((annotate("returns_localized_nsstring"))) static inline NSString *
             return WMFUserActivityTypeAppearanceSettings;
         } else if ([page isEqualToString:@"NotificationSettings"]) {
             return WMFUserActivityTypeNotificationSettings;
+        } else if ([page isEqualToString:@"Location"]) {
+            return WMFUserActivityTypeLocation;
         } else {
             return WMFUserActivityTypeSettings;
         }
